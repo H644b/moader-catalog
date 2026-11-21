@@ -354,4 +354,16 @@ export async function clean(env) {
       env.DB.prepare("DELETE FROM assets WHERE id=?").bind(a.id),
     ]);
   }
+  // Retain the object inventory until storage confirms removal.
+  await env.DB.batch([
+    env.DB.prepare(`DELETE FROM mods WHERE id IN (
+      SELECT m.id FROM mods m WHERE m.deleted < ?
+      AND NOT EXISTS (SELECT 1 FROM assets a WHERE a.mod_id=m.id) LIMIT 50
+    )`).bind(stamp - 86400),
+    env.DB.prepare(`DELETE FROM creators WHERE id IN (
+      SELECT c.id FROM creators c WHERE c.auth_email IS NULL AND c.handle='deleted-' || c.id
+      AND NOT EXISTS (SELECT 1 FROM mods m WHERE m.owner=c.id)
+      AND NOT EXISTS (SELECT 1 FROM account_deletions d WHERE d.id=c.id) LIMIT 50
+    )`),
+  ]);
 }
