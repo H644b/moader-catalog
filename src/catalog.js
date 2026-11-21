@@ -214,7 +214,7 @@ export async function feed(url, env) {
         : {}),
     },
     200,
-    { "Cache-Control": "public, max-age=0, must-revalidate" },
+    { "Cache-Control": "public, max-age=0, must-revalidate", "Access-Control-Allow-Origin": "*" },
   );
 }
 function revision(v) {

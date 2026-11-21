@@ -249,6 +249,7 @@ export async function serveFile(req, env, id, ctx) {
       "Cache-Control": a.public
         ? "public, max-age=0, must-revalidate"
         : "private, no-store",
+      ...(a.public ? { "Access-Control-Allow-Origin": "*" } : {}),
       ETag: etag,
     };
   if (req.headers.get("If-None-Match") === etag)
