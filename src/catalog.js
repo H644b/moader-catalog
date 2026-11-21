@@ -189,7 +189,9 @@ export async function feed(url, env) {
       title: d.title,
       author: d.author,
       category: d.category,
-      summary: d.summary,
+      summary: d.sample
+        ? "Sample for a fictional game. " + d.summary
+        : d.summary,
       description: d.description,
       version: d.version,
       published: d.published,

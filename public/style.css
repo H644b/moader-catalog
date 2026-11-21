@@ -550,6 +550,7 @@ option {
   font-size: 0.8rem;
 }
 .card-info .byline {
+  display: block;
   font-size: 0.88rem;
 }
 .card-foot {
