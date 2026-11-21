@@ -12,6 +12,8 @@ The public mod catalog and creator studio for Moader. The Cloudflare Worker serv
 
 Packages can be up to 128 MiB and use the same mod roots as the console importer. Previews are JPG or PNG files up to 2 MiB each. A 1920 × 1080 image fits the console’s preview limits. A new package for an existing mod needs a new version number. Unpublishing withdraws its public listing and file links.
 
+In **Preview gallery**, choose **Delete** to remove a thumbnail from your uploads and every version that uses it. The next image becomes the cover. To edit only the draft gallery, use **Remove from draft** and **Save draft**.
+
 ## Run and deploy
 
 Use Node.js 22 or newer and run `npm ci`. For local development, configure the Worker variables in `wrangler.jsonc`, apply the D1 migrations with `npx wrangler d1 migrations apply moader-community-catalog --local`, and run `npm run dev`. Put dedicated development credentials in the ignored `.dev.vars`.

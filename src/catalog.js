@@ -250,7 +250,9 @@ export async function studioDetail(env, u, id) {
   const m = await ownMod(env, u, id);
   const assets = await all(
     env.DB.prepare(
-      "SELECT id,name,mime,kind,bytes,sha FROM assets WHERE mod_id=? AND state='ready' ORDER BY created DESC",
+      `SELECT a.id,a.name,a.mime,a.kind,a.bytes,a.sha,
+        (SELECT count(*) FROM gallery g WHERE g.asset_id=a.id) AS releaseCount
+       FROM assets a WHERE a.mod_id=? AND a.state='ready' ORDER BY a.created DESC`,
     ).bind(id),
   );
   const versions = await all(
@@ -315,15 +317,20 @@ async function checkAssets(env, id, d) {
     "Choose completed files belonging to this mod.",
   );
 }
+async function commitRevision(db, statements) {
+  try {
+    await db.batch(statements);
+  } catch (e) {
+    if (String(e).includes("mods.revision"))
+      check(false, 409, "The draft changed. Reload and try again.");
+    throw e;
+  }
+}
 export async function changeMod(req, env, u, id, action) {
   const m = await ownMod(env, u, id),
     input = await body(req),
     rev = revision(input.revision);
-  check(
-    m.revision === rev,
-    409,
-    "This draft changed. Reopen it before saving.",
-  );
+  check(m.revision === rev, 409, "This draft changed. Reload and try again.");
   if (action === "save") {
     const d = meta(input.draft);
     await checkAssets(env, id, d);
@@ -337,6 +344,55 @@ export async function changeMod(req, env, u, id, action) {
       409,
       "The draft changed. Reload and try again.",
     );
+  } else if (action === "delete-thumbnail") {
+    const imageId = input.assetId,
+      db = env.DB;
+    check(isId(imageId), 400, "Choose a thumbnail to delete.");
+    const image = await db
+      .prepare(
+        "SELECT state FROM assets WHERE id=? AND mod_id=? AND kind='image'",
+      )
+      .bind(imageId, id)
+      .first();
+    check(image, 404, "Thumbnail not found in this mod.");
+    if (image.state === "garbage") return studioDetail(env, u, id);
+    check(
+      image.state === "ready",
+      409,
+      "Wait for the thumbnail upload to finish.",
+    );
+    const draft = JSON.parse(m.draft);
+    draft.gallery = (draft.gallery ?? []).filter((ref) => ref !== imageId);
+    await commitRevision(db, [
+      // A stale revision aborts the whole batch, including the release changes.
+      db
+        .prepare(
+          `UPDATE mods SET draft=?,updated=?,
+        revision=CASE WHEN revision=? AND deleted IS NULL THEN revision+1 ELSE NULL END
+        WHERE id=?`,
+        )
+        .bind(JSON.stringify(draft), now(), rev, id),
+      db
+        .prepare(
+          `UPDATE releases SET meta=json_remove(meta, (
+          SELECT fullkey FROM json_each(releases.meta,'$.gallery') WHERE value=?
+        )) WHERE mod_id=? AND EXISTS (
+          SELECT 1 FROM json_each(releases.meta,'$.gallery') WHERE value=?
+        )`,
+        )
+        .bind(imageId, id, imageId),
+      db
+        .prepare(
+          `DELETE FROM gallery WHERE asset_id=?
+        AND release_id IN (SELECT id FROM releases WHERE mod_id=?)`,
+        )
+        .bind(imageId, id),
+      db
+        .prepare(
+          "UPDATE assets SET state='garbage' WHERE id=? AND mod_id=? AND kind='image'",
+        )
+        .bind(imageId, id),
+    ]);
   } else if (action === "unpublish" || action === "delete") {
     const sql =
       action === "delete" ? "deleted=?, listed=0" : "updated=?, listed=0";
@@ -407,19 +463,13 @@ export async function changeMod(req, env, u, id, action) {
           .bind(rid, a, i),
       ),
     ];
-    try {
-      await db.batch(statements);
-    } catch (e) {
-      if (String(e).includes("mods.revision"))
-        check(false, 409, "The draft changed. Reload and try again.");
-      throw e;
-    }
+    await commitRevision(db, statements);
   } else check(false, 404, "Studio action not found.");
   return studioDetail(env, u, id);
 }
 export async function removeAsset(env, u, id) {
   const a = await env.DB.prepare(
-    "SELECT a.mod_id,m.draft FROM assets a JOIN mods m ON m.id=a.mod_id WHERE a.id=? AND m.owner=? AND m.deleted IS NULL",
+    "SELECT a.kind FROM assets a JOIN mods m ON m.id=a.mod_id WHERE a.id=? AND m.owner=? AND m.deleted IS NULL",
   )
     .bind(id, u.id)
     .first();
@@ -432,7 +482,9 @@ export async function removeAsset(env, u, id) {
   check(
     result.meta.changes === 1,
     409,
-    "Remove the file from your draft first. Published versions retain their files.",
+    a.kind === "image"
+      ? "Use Delete thumbnail in the editor to remove this image from its galleries."
+      : "A draft or published release still uses this ZIP.",
   );
   return json({ ok: true });
 }

@@ -965,6 +965,13 @@ option {
 .media-row button {
   width: 34px;
 }
+.media-row .thumbnail-delete {
+  width: auto;
+}
+.media-row .thumbnail-delete,
+.file-row .thumbnail-delete {
+  color: var(--bad);
+}
 .file-row .subtle {
   font-size: 0.85rem;
 }

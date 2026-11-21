@@ -249,15 +249,17 @@ export async function editor(u, id) {
               e(img.name) +
               '</span><button type="button" data-move="' +
               i +
-              '" aria-label="Move preview earlier" ' +
+              '" title="Move preview earlier" aria-label="Move preview earlier" ' +
               (!i ? "disabled" : "") +
               ">" +
               icon("left") +
               '</button><button type="button" data-drop="' +
               i +
-              '" aria-label="Remove preview from draft">' +
+              '" title="Remove from draft" aria-label="Remove preview from draft">' +
               icon("x") +
-              "</button></div>"
+              "</button>" +
+              deleteThumbnailButton(img) +
+              "</div>"
           : "";
       })
       .join("");
@@ -268,6 +270,10 @@ export async function editor(u, id) {
           (b.onclick = () => {
             selection.gallery.splice(Number(b.dataset.drop), 1);
             renderMedia();
+            msg(
+              el("upload-status"),
+              "Removed from the draft gallery. Save draft to keep this change.",
+            );
           }),
       );
     el("media-list")
@@ -299,9 +305,13 @@ export async function editor(u, id) {
                 e(a.name) +
                 '</span><button type="button" class="subtle" data-use="' +
                 e(a.id) +
-                '">Use</button><button type="button" class="subtle" data-del="' +
-                e(a.id) +
-                '">Remove</button></div>',
+                '">Use</button>' +
+                (a.kind === "image"
+                  ? deleteThumbnailButton(a)
+                  : '<button type="button" class="subtle" data-del="' +
+                    e(a.id) +
+                    '">Remove</button>') +
+                "</div>",
             )
             .join("") +
           "</details>",
@@ -319,6 +329,16 @@ export async function editor(u, id) {
           }),
       );
     el("media-list")
+      .querySelectorAll("[data-delete-thumbnail]")
+      .forEach((button) => {
+        button.onclick = () =>
+          deleteThumbnail(
+            model.assets.find(
+              (asset) => asset.id === button.dataset.deleteThumbnail,
+            ),
+          );
+      });
+    el("media-list")
       .querySelectorAll("[data-del]")
       .forEach(
         (b) =>
@@ -332,6 +352,42 @@ export async function editor(u, id) {
               renderMedia();
             }, "upload-status")),
       );
+  }
+  function deleteThumbnailButton(asset) {
+    return (
+      '<button type="button" class="subtle thumbnail-delete" data-delete-thumbnail="' +
+      e(asset.id) +
+      '" title="Delete thumbnail" aria-label="Delete thumbnail ' +
+      e(asset.name) +
+      '">Delete</button>'
+    );
+  }
+  function deleteThumbnail(asset) {
+    const releases = asset.releaseCount;
+    const scope = releases
+      ? "your uploads, your draft and " +
+        releases +
+        " published " +
+        (releases === 1 ? "version" : "versions")
+      : "your uploads and draft";
+    if (
+      !window.confirm(
+        'Delete "' +
+          asset.name +
+          '" from ' +
+          scope +
+          "? This takes effect immediately.",
+      )
+    )
+      return;
+    return run(async () => {
+      model = await api("/api/studio/mods/" + model.id + "/delete-thumbnail", {
+        method: "POST",
+        data: { assetId: asset.id, revision: model.revision },
+      });
+      selection.gallery = selection.gallery.filter((id) => id !== asset.id);
+      msg(el("upload-status"), "Thumbnail deleted.");
+    }, "upload-status");
   }
   function values() {
     const obj = {};
