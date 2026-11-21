@@ -93,7 +93,7 @@ export async function viewer(req, env, required = true) {
   const digest = await sessionKey(req);
   const user = digest
     ? await env.DB.prepare(
-        "SELECT c.id,c.handle,c.display_name,c.auth_email FROM sessions s JOIN creators c ON c.id=s.owner WHERE s.digest=? AND s.expires>?",
+        "SELECT c.id,c.handle,c.display_name,c.auth_email FROM sessions s JOIN creators c ON c.id=s.owner WHERE s.digest=? AND s.expires>? AND c.auth_email IS NOT NULL",
       )
         .bind(digest, now())
         .first()
@@ -104,11 +104,12 @@ export async function viewer(req, env, required = true) {
 async function signSession(env, u, extra = {}) {
   const token = random(),
     expires = 14 * 86400;
-  await env.DB.prepare(
-    "INSERT INTO sessions(digest,owner,expires) VALUES(?,?,?)",
+  const issued = await env.DB.prepare(
+    "INSERT INTO sessions(digest,owner,expires) SELECT ?,id,? FROM creators WHERE id=? AND auth_email IS NOT NULL",
   )
-    .bind(await hash(token), u.id, now() + expires)
+    .bind(await hash(token), now() + expires, u.id)
     .run();
+  check(issued.meta.changes === 1, 401, "This account is unavailable.");
   return json(
     { user: safeUser(u), ...extra },
     200,

@@ -278,9 +278,9 @@ export async function createMod(req, env, u) {
     t = now();
   try {
     const result = await env.DB.prepare(
-      "INSERT INTO mods(id,owner,game_id,slug,draft,created,updated) SELECT ?,?,?,?,?,?,? WHERE (SELECT count(*) FROM mods WHERE owner=? AND deleted IS NULL)<100",
+      "INSERT INTO mods(id,owner,game_id,slug,draft,created,updated) SELECT ?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM creators WHERE id=? AND auth_email IS NOT NULL) AND (SELECT count(*) FROM mods WHERE owner=? AND deleted IS NULL)<100",
     )
-      .bind(id, u.id, game, slug, JSON.stringify(d), t, t, u.id)
+      .bind(id, u.id, game, slug, JSON.stringify(d), t, t, u.id, u.id)
       .run();
     check(
       result.meta.changes === 1,
