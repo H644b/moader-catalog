@@ -1,0 +1,23 @@
+import {api,crumbs,e,icon,main,msg,needLogin,nextPath,textField} from './ui.js';
+const f=(label,name,auto)=>textField(label,name,'',{required:true,type:name.toLowerCase().includes('password')?'password':'text',auto});
+function showKey(key,href){
+ main.innerHTML='<section class="auth-panel"><img class="auth-mark" src="/brand/mark.svg" alt=""><h1>Save your recovery key</h1><p>You can use this key to reset your password. Keep a copy somewhere private.</p><code class="recovery">'+e(key)+'</code><button id="copy-key" class="btn wide">'+icon('copy')+'Copy recovery key</button><p class="notice" role="status" id="copied"></p><a class="btn mint wide" href="'+e(href)+'">I saved my key '+icon('arrow')+'</a></section>';
+ document.querySelector('#copy-key').onclick=async()=>{try{await navigator.clipboard.writeText(key);msg(document.querySelector('#copied'),'Copied.');}catch{msg(document.querySelector('#copied'),'Select and copy the key above.');}};
+}
+export function authForm(mode){
+ const signup=mode==='signup',reset=mode==='recover',title=signup?'Create an account':reset?'Recover your account':'Welcome back';
+ document.title=title+' · Moader';
+ main.innerHTML='<section class="auth-panel"><img class="auth-mark" src="/brand/mark.svg" alt=""><h1>'+title+'</h1><p>'+(signup?'Publish and manage your mods in Creator studio.':reset?'Use the recovery key you saved when you signed up.':'Sign in to your creator account.')+'</p><form id="auth-form">'+f('Username','handle','username')+(signup?textField('Creator display name','displayName','',{max:70,auto:'nickname'}):'')+(reset?f('Recovery key','recoveryKey','off'):'')+f(reset?'New password':'Password','password',signup||reset?'new-password':'current-password')+(signup||reset?'<small>Use at least 10 characters.</small>':'<a class="text-link" href="/recover">Forgot your password?</a>')+'<p role="status" class="notice" id="auth-state"></p><button class="btn mint wide">'+(signup?'Create account':reset?'Reset password':'Sign in')+' '+icon('arrow')+'</button></form><div class="auth-foot">'+(signup?'Have an account? <a href="/login">Sign in</a>':'New to Moader? <a href="/signup">Create an account</a>')+'</div></section>';
+ const form=document.querySelector('#auth-form');if(signup||reset)form.elements.password.minLength=10;
+ form.onsubmit=async ev=>{ev.preventDefault();const b=form.querySelector('button');b.disabled=true;
+ try{const r=await api('/api/account/'+mode,{method:'POST',data:Object.fromEntries(new FormData(form))});if(r.recoveryKey)showKey(r.recoveryKey,nextPath());else location.assign(nextPath());}
+ catch(err){msg(document.querySelector('#auth-state'),err.message,true);b.disabled=false;}};
+}
+export function account(u){
+ if(!u)return needLogin();document.title='Account · Moader';
+ main.innerHTML=crumbs('Account','Creator studio','/studio')+'<div class="page-title"><h1>Account</h1><button class="btn" id="logout">Sign out</button></div><div class="settings-grid"><section class="sheet"><h2>Creator profile</h2><p class="muted">@'+e(u.handle)+'</p><form data-account="profile">'+textField('Display name','displayName',u.displayName,{required:true,max:70})+'<button class="btn">Save profile</button><p class="notice" role="status"></p></form></section><section class="sheet"><h2>Password</h2><form data-account="change-password">'+f('Current password','password','current-password')+f('New password','newPassword','new-password')+'<button class="btn">Change password</button><p class="notice" role="status"></p></form></section><section class="sheet"><h2>Recovery key</h2><p>Create a replacement if you lose your saved copy.</p><form data-account="recovery-key">'+f('Current password','password','current-password')+'<button class="btn">Replace recovery key</button><p class="notice" role="status"></p></form></section></div>';
+ document.querySelector('#logout').onclick=async()=>{try{await api('/api/account/logout',{method:'POST',data:{}});location.assign('/');}catch(err){msg(main.querySelector('.notice'),err.message,true);}};
+ main.querySelectorAll('[data-account]').forEach(form=>form.onsubmit=async ev=>{ev.preventDefault();const b=form.querySelector('button');b.disabled=true;const out=form.querySelector('.notice');
+ try{const r=await api('/api/account/'+form.dataset.account,{method:'POST',data:Object.fromEntries(new FormData(form))});if(r.recoveryKey)showKey(r.recoveryKey,'/account');else{if(form.dataset.account!=='profile')form.reset();msg(out,'Saved.');if(r.user?.displayName)document.querySelector('.account-link span').textContent=r.user.displayName;}}
+ catch(err){msg(out,err.message,true);}finally{b.disabled=false;}});
+}
