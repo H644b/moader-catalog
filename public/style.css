@@ -546,6 +546,7 @@ option {
   font-size: 1.45rem;
 }
 .card-info .game-label {
+  margin-bottom: 3px;
   font-size: 0.8rem;
 }
 .card-info .byline {
@@ -1045,10 +1046,7 @@ option {
     gap: 10px;
   }
   .account-link span {
-    max-width: 7ch;
-  }
-  .publish-link {
-    font-size: 0.8rem;
+    max-width: min(42vw, 20ch);
   }
   .shell {
     padding-block: 18px 40px;

@@ -28,6 +28,7 @@ function present(row, origin) {
     path: new URL(modURL(origin, row)).pathname,
     gameId: row.game_id,
     game: d.game,
+    sample: d.sample === true,
     title: d.title,
     author: row.author,
     category: d.category,

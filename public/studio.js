@@ -16,9 +16,7 @@ export async function studio(u) {
   const data = await api("/api/studio/mods");
   document.title = "Creator studio · Moader";
   main.innerHTML =
-    '<div class="page-title"><div><p class="muted">' +
-    e(u.displayName) +
-    '</p><h1>Creator studio</h1></div><a class="btn mint" href="/studio/new">' +
+    '<div class="page-title"><h1>Creator studio</h1><a class="btn mint" href="/studio/new">' +
     icon("plus") +
     'New mod</a></div><section><div class="section-head"><div><h2>Your mods</h2><span class="count">' +
     data.mods.length +
@@ -50,9 +48,7 @@ export async function studio(u) {
         "</div>"
       : '<div class="empty studio-empty">' +
         icon("upload") +
-        '<h2>Publish your first mod</h2><p>Add game details, a ZIP and preview images to create your listing.</p><a class="btn" href="/studio/new">Create a draft ' +
-        icon("arrow") +
-        "</a></div>") +
+        "<h2>Publish your first mod</h2><p>Add game details, a ZIP and preview images to create your listing.</p></div>") +
     "</section>";
 }
 const slugify = (s) =>

@@ -13,17 +13,20 @@ const options = (list, val) =>
         "</option>",
     )
     .join("");
+function gameLabel(m) {
+  return m.sample ? m.game + " · Sample for a fictional game" : m.game;
+}
 function card(m) {
   return (
     '<a class="mod-card" href="' +
     e(m.path) +
     '"><div class="card-art">' +
     image(m) +
-    '</div><div class="card-info"><span class="game-label">' +
-    e(m.game) +
-    "</span><h3>" +
+    '</div><div class="card-info"><h3>' +
     e(m.title) +
-    '</h3><span class="byline">by ' +
+    '</h3><span class="game-label">' +
+    e(gameLabel(m)) +
+    '</span><span class="byline">by ' +
     e(m.author) +
     '</span><div class="card-foot"><span>' +
     icon("calendar") +
@@ -113,46 +116,45 @@ export async function discover() {
       )
       .join("") +
     '<button type="button" id="reset" class="subtle">Clear filters</button></div></form><div id="results" aria-busy="false"></div><p id="search-status" class="sr" role="status"></p></section>';
-  let picked = 0;
-  function spotlight() {
-    const m = featured[picked];
-    by("spot").innerHTML =
-      '<div class="spot-art">' +
-      image(m) +
-      '</div><div class="spot-shade"></div><div class="spot-body"><span class="spot-game">' +
+  if (featured.length) {
+    const spot = by("spot");
+    spot.innerHTML =
+      '<div class="spot-art"></div><div class="spot-shade"></div><div class="spot-body"><h2 aria-live="polite"></h2><span class="spot-game">' +
       icon("game") +
-      e(m.game) +
-      "</span><h2>" +
-      e(m.title) +
-      "</h2><p>" +
-      e(m.summary) +
-      '</p><a class="btn mint" href="' +
-      e(m.path) +
-      '">View mod ' +
+      '<span></span></span><p></p><a class="btn mint">View mod ' +
       icon("arrow") +
       "</a></div>" +
       (featured.length > 1
         ? '<div class="spot-pages"><button type="button" data-dir="-1" aria-label="Previous featured mod">' +
           icon("left") +
-          "</button><output>" +
-          String(picked + 1).padStart(2, "0") +
-          " / " +
-          String(featured.length).padStart(2, "0") +
-          '</output><button type="button" data-dir="1" aria-label="Next featured mod">' +
+          '</button><output aria-hidden="true"></output><button type="button" data-dir="1" aria-label="Next featured mod">' +
           icon("right") +
           "</button></div>"
         : "");
-  }
-  if (featured.length) {
-    spotlight();
-    by("spot").onclick = (ev) => {
-      const b = ev.target.closest("[data-dir]");
-      if (b) {
-        picked =
-          (picked + Number(b.dataset.dir) + featured.length) % featured.length;
-        spotlight();
-      }
+    let picked = 0;
+    const showFeatured = () => {
+      const m = featured[picked];
+      spot.querySelector(".spot-art").innerHTML = image(m);
+      spot.querySelector("h2").textContent = m.title;
+      spot.querySelector(".spot-game span").textContent = gameLabel(m);
+      spot.querySelector("p").textContent = m.summary;
+      spot.querySelector("a").href = m.path;
+      const position = spot.querySelector("output");
+      if (position)
+        position.textContent =
+          String(picked + 1).padStart(2, "0") +
+          " / " +
+          String(featured.length).padStart(2, "0");
     };
+    showFeatured();
+    spot.addEventListener("click", (ev) => {
+      const arrow = ev.target.closest("[data-dir]");
+      if (!arrow) return;
+      picked =
+        (picked + Number(arrow.dataset.dir) + featured.length) %
+        featured.length;
+      showFeatured();
+    });
   }
   const form = by("tools"),
     filter = by("filter"),
@@ -252,12 +254,12 @@ export async function detail(game, slug) {
   document.title = m.title + " · Moader";
   main.innerHTML =
     crumbs(m.title) +
-    '<article><div class="detail-heading"><div><p class="game-label">' +
-    icon("game") +
-    e(m.game) +
-    "</p><h1>" +
+    '<article><div class="detail-heading"><div><h1>' +
     e(m.title) +
-    '</h1><p class="byline">by ' +
+    '</h1><p class="game-label">' +
+    icon("game") +
+    e(gameLabel(m)) +
+    '</p><p class="byline">by ' +
     e(m.author) +
     '</p></div><a class="btn mint" download href="' +
     e(m.download) +

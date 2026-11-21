@@ -81,9 +81,7 @@ export function nav(u) {
       icon("user") +
       "<span>" +
       e(u.displayName) +
-      '</span></a><a class="btn mint small publish-link" href="/studio/new">' +
-      icon("plus") +
-      "<span>Publish a mod</span></a>"
+      "</span></a>"
     : '<a class="sign-link" href="/login">Sign in</a><a class="btn mint small" href="/signup">Sign up ' +
       icon("arrow") +
       "</a>";
