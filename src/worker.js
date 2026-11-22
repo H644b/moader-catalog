@@ -6,6 +6,7 @@ import {
   details,
   discover,
   feed,
+  recordView,
   removeAsset,
   studioDetail,
   studioList,
@@ -35,6 +36,9 @@ async function route(req, env, ctx) {
   if (pieces[0] === "files" && pieces.length === 3 && read)
     return serveFile(req, env, pieces[1], ctx);
   if (pieces[0] === "api") {
+    if (pieces[1] === "mods" && pieces.length === 4 &&
+        pieces[3] === "view" && m === "POST")
+      return recordView(req, env, pieces[2]);
     if (pieces[1] === "mods" && pieces.length === 4 && read)
       return details(
         env,

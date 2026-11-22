@@ -5,6 +5,7 @@ import {
   check,
   field,
   gameOK,
+  hash,
   isoDay,
   isId,
   json,
@@ -15,9 +16,10 @@ import {
   uid,
 } from "./common.js";
 import { ownMod } from "./files.js";
+import { limit } from "./auth.js";
 const liveFrom =
   " FROM mods m JOIN releases r ON r.id=m.current_release JOIN assets a ON a.id=r.package_id WHERE m.listed=1 AND m.deleted IS NULL";
-const columns = `SELECT m.id,m.slug,m.game_id,r.id AS rid,r.version,r.meta,r.author,r.published,a.id AS aid,a.bytes,a.sha,a.name,
+const columns = `SELECT m.id,m.slug,m.game_id,m.views,r.id AS rid,r.version,r.meta,r.author,r.published,a.id AS aid,a.bytes,a.sha,a.name,
  (SELECT json_group_array(json_object('id',pic.id,'name',pic.name)) FROM
  (SELECT im.id,im.name FROM gallery g JOIN assets im ON im.id=g.asset_id WHERE g.release_id=r.id ORDER BY g.position) pic) AS pics`;
 function present(row, origin) {
@@ -30,6 +32,7 @@ function present(row, origin) {
     game: d.game,
     sample: d.sample === true,
     title: d.title,
+    views: row.views,
     author: row.author,
     category: d.category,
     summary: d.summary,
@@ -217,6 +220,28 @@ export async function feed(url, env) {
     { "Cache-Control": "public, max-age=0, must-revalidate", "Access-Control-Allow-Origin": "*" },
   );
 }
+export async function recordView(req, env, id) {
+  check(isId(id), 404, "This mod is unavailable.");
+  const { visitor } = await body(req);
+  check(isId(visitor), 400, "Invalid visit.");
+  await limit(req, env, "catalog-views", 120, 60);
+  const day = Math.floor(now() / 86400);
+  const key = await hash(`mod-view|${day}|${id}|${visitor}`);
+  const published =
+    "id=? AND listed=1 AND current_release IS NOT NULL AND deleted IS NULL";
+  // D1 commits these together. A retry sees the same daily limit entry,
+  // even when two tabs open this mod at the same time.
+  const [, , total] = await env.DB.batch([
+    env.DB.prepare(`UPDATE mods SET views=views+1 WHERE ${published}
+      AND NOT EXISTS (SELECT 1 FROM limits WHERE key=?)`).bind(id, key),
+    env.DB.prepare(`INSERT INTO limits(key,hits,expires)
+      SELECT ?,1,? FROM mods WHERE ${published} ON CONFLICT(key) DO NOTHING`)
+      .bind(key, (day + 1) * 86400, id),
+    env.DB.prepare(`SELECT views FROM mods WHERE ${published}`).bind(id),
+  ]);
+  check(total.results.length, 404, "This mod is unavailable.");
+  return json({ views: total.results[0].views });
+}
 function revision(v) {
   check(
     Number.isSafeInteger(v) && v > 0,
@@ -230,6 +255,7 @@ const summary = (m) => ({
   gameId: m.game_id,
   slug: m.slug,
   listed: !!m.listed,
+  views: m.views,
   revision: m.revision,
   updated: m.updated,
   hasRelease: !!m.current_release,

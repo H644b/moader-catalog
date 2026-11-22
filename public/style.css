@@ -555,6 +555,8 @@ option {
 }
 .card-foot {
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
   border-top: 1px solid var(--rule);
   margin-top: 15px;
   padding: 12px 0;
@@ -570,6 +572,24 @@ option {
 .card-foot .icon {
   width: 15px;
   height: 15px;
+}
+.detail-byline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 4px;
+}
+.view-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.detail-byline .icon {
+  width: 1em;
+  height: 1em;
 }
 .no-art {
   display: grid;
@@ -1158,7 +1178,6 @@ option {
   .card-foot {
     font-size: 0.72rem;
     gap: 6px;
-    flex-wrap: wrap;
     padding: 8px 0;
     margin-top: 9px;
   }

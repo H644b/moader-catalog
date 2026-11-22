@@ -9,6 +9,7 @@ import {
   needLogin,
   size,
   textField,
+  viewLabel,
 } from "./ui.js";
 const el = (id) => document.getElementById(id);
 export async function studio(u) {
@@ -34,6 +35,7 @@ export async function studio(u) {
               e(m.draft.title) +
               "</strong><small>" +
               e(m.draft.game) +
+              (m.hasRelease ? " · " + viewLabel(m.views) : "") +
               '</small></span><span class="state ' +
               (m.listed ? "live" : "") +
               '">' +

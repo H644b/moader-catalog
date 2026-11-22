@@ -1,4 +1,6 @@
-import { api, crumbs, date, e, icon, image, main, msg, size } from "./ui.js";
+import {
+  api, crumbs, date, e, icon, image, main, msg, size, viewLabel,
+} from "./ui.js";
 const by = (id) => document.getElementById(id);
 const options = (list, val) =>
   list
@@ -34,6 +36,9 @@ function card(m) {
     "</span><span>" +
     icon("box") +
     size(m.bytes) +
+    '</span><span class="view-count">' +
+    icon("eye") +
+    viewLabel(m.views) +
     "</span></div></div></a>"
   );
 }
@@ -241,7 +246,41 @@ export async function discover() {
     timer = setTimeout(update, 180);
   };
   show(initial);
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) update();
+  });
 }
+const visitorKey = "moader.catalog.daily-visitor";
+function dailyVisitor() {
+  const day = new Date().toISOString().slice(0, 10);
+  const [savedDay, token] = (localStorage.getItem(visitorKey) || "").split(":");
+  if (savedDay === day && /^[0-9a-f-]{36}$/.test(token)) return token;
+  const visitor = crypto.randomUUID();
+  localStorage.setItem(visitorKey, day + ":" + visitor);
+  return visitor;
+}
+
+function countVisibleView(id, label) {
+  async function count() {
+    if (document.visibilityState !== "visible") return;
+    document.removeEventListener("visibilitychange", count);
+    try {
+      const visitor = navigator.locks
+        ? await navigator.locks.request(visitorKey, dailyVisitor)
+        : dailyVisitor();
+      const result = await api("/api/mods/" + encodeURIComponent(id) + "/view", {
+        method: "POST",
+        data: { visitor },
+      });
+      label.textContent = viewLabel(result.views);
+    } catch {
+      // The published total stays visible if storage or the counter is unavailable.
+    }
+  }
+  document.addEventListener("visibilitychange", count);
+  count();
+}
+
 export async function detail(game, slug) {
   const ver = new URLSearchParams(location.search).get("version");
   const m = await api(
@@ -259,9 +298,13 @@ export async function detail(game, slug) {
     '</h1><p class="game-label">' +
     icon("game") +
     e(gameLabel(m)) +
-    '</p><p class="byline">by ' +
+    '</p><p class="byline detail-byline"><span>by ' +
     e(m.author) +
-    '</p></div><a class="btn mint" download href="' +
+    '</span><span class="view-count">' +
+    icon("eye") +
+    '<span id="mod-views">' +
+    viewLabel(m.views) +
+    '</span></span></p></div><a class="btn mint" download href="' +
     e(m.download) +
     '">' +
     icon("download") +
@@ -330,6 +373,7 @@ export async function detail(game, slug) {
         "</section>"
       : "") +
     "</article>";
+  countVisibleView(m.id, by("mod-views"));
   main.querySelectorAll("[data-img]").forEach(
     (b) =>
       (b.onclick = () => {

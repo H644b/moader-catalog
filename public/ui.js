@@ -13,6 +13,9 @@ export const size = (n) =>
     : n < 1048576
       ? (n / 1024).toFixed(1) + " KiB"
       : (n / 1048576).toFixed(1) + " MiB";
+const wholeNumber = new Intl.NumberFormat();
+export const viewLabel = (n = 0) =>
+  wholeNumber.format(n) + (n === 1 ? " view" : " views");
 export const date = (v) =>
   new Intl.DateTimeFormat(undefined, {
     year: "numeric",
@@ -32,6 +35,7 @@ const paths = {
   download: '<path d="M12 3v12m-5-5 5 5 5-5M4 16v4h16v-4"/>',
   upload: '<path d="M12 16V4m-5 5 5-5 5 5M4 16v4h16v-4"/>',
   user: '<circle cx="12" cy="7.5" r="3.5"/><path d="M4 21v-2a8 6 0 0 1 16 0v2"/>',
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
   plus: '<path d="M12 4v16M4 12h16"/>',
   box: '<path d="m12 3 9 5-9 5-9-5 9-5Zm-9 5v9l9 5 9-5V8m-9 5v9"/>',
   game: '<path d="M6 7h12l3 9c1 4-2 5-4 2l-2-2H9l-2 2c-2 3-5 2-4-2l3-9Z"/><path d="M7 11v4m-2-2h4m6-1h.1m2.8 2h.1"/>',

@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { getPlatformProxy } from "wrangler";
+import { catalogDB } from "./catalog-db.mjs";
 import {
   changeMod,
   details,
@@ -12,24 +11,7 @@ import {
 import { serveFile } from "../src/files.js";
 
 test("a creator can delete a thumbnail shared by draft and published galleries", async (t) => {
-  const { env, dispose } = await getPlatformProxy({
-    persist: false,
-    remoteBindings: false,
-  });
-  t.after(dispose);
-  for (const name of ["0001_catalog", "0002_starters"]) {
-    const schema = await readFile(
-      new URL("../migrations/" + name + ".sql", import.meta.url),
-      "utf8",
-    );
-    await env.DB.batch(
-      schema
-        .trim()
-        .split(/;\s*(?:\n|$)/)
-        .filter((s) => s.trim())
-        .map((s) => env.DB.prepare(s)),
-    );
-  }
+  const env = await catalogDB(t);
   const row = await env.DB.prepare(
     "SELECT * FROM mods WHERE slug='orchard-palette'",
   ).first();
